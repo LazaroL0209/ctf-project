@@ -1,0 +1,14 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+*.swp
+*.swo
+
+# Scratch files — never commit plain-text flags or working notes with the answer
+scratch/
+*_scratch.*
+flag.txt
+plain_flag.txt
