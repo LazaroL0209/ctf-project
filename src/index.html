@@ -175,6 +175,28 @@
   .toast{position:fixed;bottom:2rem;right:2rem;z-index:500;background:var(--bg2);border:1px solid var(--green);padding:1rem 1.5rem;font-family:'Share Tech Mono',monospace;font-size:0.85rem;color:var(--green);transform:translateY(100px);opacity:0;transition:all 0.35s ease;max-width:320px;}
   .toast.show{transform:translateY(0);opacity:1;}
 
+  /* GAMIFICATION */
+  .nav-pill{background:rgba(124,58,237,0.10);border:1px solid rgba(124,58,237,0.25);padding:4px 12px;font-family:'Share Tech Mono',monospace;font-size:0.78rem;color:#c4b5fd;}
+  .modal-stats{display:flex;gap:1rem;flex-wrap:wrap;margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,0.08);}
+  .stat-chip{border:1px solid rgba(255,255,255,0.10);background:rgba(255,255,255,0.03);padding:8px 10px;min-width:140px;}
+  .stat-label{font-family:'Share Tech Mono',monospace;font-size:0.65rem;letter-spacing:2px;color:var(--text2);text-transform:uppercase;display:block;margin-bottom:4px;}
+  .stat-value{font-family:'Rajdhani',sans-serif;font-size:1.2rem;font-weight:700;color:var(--text);}
+  .stat-sub{font-family:'Share Tech Mono',monospace;font-size:0.72rem;color:var(--text2);margin-top:2px;display:block;}
+  .badge-row{display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.75rem;}
+  .badge{font-family:'Share Tech Mono',monospace;font-size:0.65rem;letter-spacing:1px;padding:3px 8px;border:1px solid rgba(0,245,196,0.25);color:var(--accent);background:rgba(0,245,196,0.06);}
+  .badge.locked{opacity:0.4;border-color:rgba(255,255,255,0.12);color:var(--text2);background:rgba(255,255,255,0.02);}
+  .progress-mini{margin-top:0.5rem;background:rgba(255,255,255,0.06);height:6px;border-radius:4px;overflow:hidden;}
+  .progress-mini > div{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));width:0%;transition:width 0.5s ease;}
+  .modal.success{border-color:rgba(16,185,129,0.35);}
+
+  /* CONFETTI */
+  .confetti-layer{position:fixed;inset:0;pointer-events:none;z-index:600;overflow:hidden;}
+  .confetti{position:absolute;top:-10px;width:10px;height:14px;opacity:0.95;transform:translate3d(0,0,0) rotate(0deg);}
+  @keyframes confettiFall {
+    0%{transform:translate3d(0,-20px,0) rotate(0deg);opacity:1}
+    100%{transform:translate3d(0,110vh,0) rotate(720deg);opacity:0.9}
+  }
+
   @keyframes fadeInUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
   @keyframes fadeInDown{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
@@ -248,6 +270,7 @@
   <div class="nav-right">
     <span class="nav-user"><span class="nav-user-dot"></span><span id="nav-username"></span></span>
     <span class="nav-score-pill" id="nav-score">0 pts</span>
+    <span class="nav-pill" id="nav-level">LVL 1 · 0 XP</span>
     <button class="nav-btn" onclick="logout()">Logout</button>
   </div>
 </nav>
@@ -327,7 +350,7 @@
 
 <!-- CHALLENGE MODAL -->
 <div class="modal-overlay" id="modal" onclick="closeModalOnBg(event)">
-  <div class="modal">
+  <div class="modal" id="challenge-modal">
     <button class="modal-close" onclick="closeModal()">&#10005;</button>
     <div class="modal-cat" id="m-cat"></div>
     <div class="modal-title" id="m-title"></div>
@@ -340,10 +363,32 @@
       <button class="submit-btn" onclick="submitFlag()">Submit</button>
     </div>
     <div class="flag-msg" id="flag-msg"></div>
+    <div class="modal-stats" id="modal-stats">
+      <div class="stat-chip">
+        <span class="stat-label">Attempts</span>
+        <span class="stat-value" id="m-attempts">0</span>
+        <span class="stat-sub">wrong submits only</span>
+      </div>
+      <div class="stat-chip">
+        <span class="stat-label">Potential points</span>
+        <span class="stat-value" id="m-potential">0</span>
+        <span class="stat-sub" id="m-penalty">-0 for attempts / hints</span>
+      </div>
+      <div class="stat-chip">
+        <span class="stat-label">Level progress</span>
+        <span class="stat-value" id="m-xp">LVL 1</span>
+        <div class="progress-mini"><div id="m-xpbar"></div></div>
+      </div>
+      <div class="stat-chip" style="flex:1;min-width:220px">
+        <span class="stat-label">Achievements</span>
+        <div class="badge-row" id="m-badges"></div>
+      </div>
+    </div>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
+<div class="confetti-layer" id="confetti" style="display:none"></div>
 
 <script>
 const challenges = [
@@ -390,11 +435,199 @@ const team = [
   {name:'Miles B.',role:'Edu. Value',color:'#00f5c4'},
 ];
 
+const STORAGE_KEY = 'hackarena_v1';
 const users = {};
 let currentUser = null;
 let currentChallenge = null;
 let currentFilter = 'all';
 let leaderboardData = [];
+let confettiTimer;
+
+const GAME = {
+  points: { attemptPenalty: 10, hintPenalty: 25, minAward: 25 },
+  xp: { perPoint: 1, levelXP: 600 },
+};
+
+const ACHIEVEMENTS = [
+  { id: 'first_blood', name: 'First Blood', desc: 'Solve your first challenge.' },
+  { id: 'five_solves', name: 'On a Roll', desc: 'Solve 5 challenges.' },
+  { id: 'ten_solves', name: 'Double Digits', desc: 'Solve 10 challenges.' },
+  { id: 'no_hint_solve', name: 'No Training Wheels', desc: 'Solve a challenge without using the hint.' },
+  { id: 'comeback', name: 'Comeback', desc: 'Solve after 3+ wrong attempts.' },
+  { id: 'web_mastery', name: 'Web Mastery', desc: 'Solve 3 Web Exploit challenges.' },
+  { id: 'crypto_mastery', name: 'Crypto Mastery', desc: 'Solve 3 Cryptography challenges.' },
+];
+
+function safeJsonParse(s, fallback) {
+  try { return JSON.parse(s); } catch { return fallback; }
+}
+
+function loadStorage() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  const data = raw ? safeJsonParse(raw, null) : null;
+  if (!data || typeof data !== 'object' || !data.users) return { users: {} };
+  return data;
+}
+
+function saveStorage() {
+  const data = { users };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function ensureUserState(u) {
+  if (!users[u].stats) users[u].stats = { score: 0, solved: 0, lastSolveTs: 0, xp: 0 };
+  if (!users[u].progress) users[u].progress = { solvedIds: [], attempts: {}, hintUsed: {}, achievements: [] };
+}
+
+function computeLevel(xp) {
+  const level = Math.max(1, Math.floor(xp / GAME.xp.levelXP) + 1);
+  const inLevel = xp % GAME.xp.levelXP;
+  const pct = Math.round((inLevel / GAME.xp.levelXP) * 100);
+  return { level, inLevel, pct };
+}
+
+function awardXP(points) {
+  const u = users[currentUser];
+  ensureUserState(currentUser);
+  u.stats.xp += Math.max(0, points) * GAME.xp.perPoint;
+}
+
+function updateNavStats() {
+  const u = users[currentUser];
+  ensureUserState(currentUser);
+  document.getElementById('nav-score').textContent = (u.stats.score || 0).toLocaleString() + ' pts';
+  const { level, inLevel } = computeLevel(u.stats.xp || 0);
+  document.getElementById('nav-level').textContent = `LVL ${level} · ${inLevel} XP`;
+}
+
+function getAttemptCount(chId) {
+  const u = users[currentUser];
+  ensureUserState(currentUser);
+  return u.progress.attempts[String(chId)] || 0;
+}
+
+function isHintUsed(chId) {
+  const u = users[currentUser];
+  ensureUserState(currentUser);
+  return !!u.progress.hintUsed[String(chId)];
+}
+
+function setHintUsed(chId) {
+  const u = users[currentUser];
+  ensureUserState(currentUser);
+  u.progress.hintUsed[String(chId)] = true;
+}
+
+function incrementAttempt(chId) {
+  const u = users[currentUser];
+  ensureUserState(currentUser);
+  const k = String(chId);
+  u.progress.attempts[k] = (u.progress.attempts[k] || 0) + 1;
+}
+
+function isSolved(chId) {
+  const u = users[currentUser];
+  ensureUserState(currentUser);
+  return u.progress.solvedIds.includes(chId);
+}
+
+function markSolved(chId) {
+  const u = users[currentUser];
+  ensureUserState(currentUser);
+  if (!u.progress.solvedIds.includes(chId)) u.progress.solvedIds.push(chId);
+}
+
+function computeAwardPoints(ch) {
+  const attempts = getAttemptCount(ch.id);
+  const hint = isHintUsed(ch.id);
+  const penalty = (attempts * GAME.points.attemptPenalty) + (hint ? GAME.points.hintPenalty : 0);
+  const award = Math.max(GAME.points.minAward, ch.pts - penalty);
+  return { award, penalty, attempts, hint };
+}
+
+function formatLastSolve(ts) {
+  if (!ts) return '—';
+  const diffMs = Date.now() - ts;
+  const diffMin = Math.max(0, Math.floor(diffMs / 60000));
+  if (diffMin < 1) return 'just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `${diffH}h ago`;
+  const diffD = Math.floor(diffH / 24);
+  return `${diffD}d ago`;
+}
+
+function renderModalStats() {
+  if (!currentChallenge || !currentUser) return;
+  const { award, penalty, attempts } = computeAwardPoints(currentChallenge);
+  document.getElementById('m-attempts').textContent = attempts;
+  document.getElementById('m-potential').textContent = award;
+  document.getElementById('m-penalty').textContent = `-${penalty} for attempts / hints`;
+
+  const u = users[currentUser];
+  ensureUserState(currentUser);
+  const lvl = computeLevel(u.stats.xp || 0);
+  document.getElementById('m-xp').textContent = `LVL ${lvl.level} · ${lvl.inLevel}/${GAME.xp.levelXP} XP`;
+  document.getElementById('m-xpbar').style.width = `${lvl.pct}%`;
+
+  const owned = new Set(u.progress.achievements || []);
+  document.getElementById('m-badges').innerHTML = ACHIEVEMENTS.map(a => {
+    const locked = !owned.has(a.id);
+    return `<span class="badge ${locked ? 'locked' : ''}" title="${a.desc}">${a.name}</span>`;
+  }).join('');
+}
+
+function unlockAchievement(id) {
+  const u = users[currentUser];
+  ensureUserState(currentUser);
+  if (u.progress.achievements.includes(id)) return false;
+  u.progress.achievements.push(id);
+  const a = ACHIEVEMENTS.find(x => x.id === id);
+  if (a) showToast(`🏅 Achievement unlocked: ${a.name}`);
+  return true;
+}
+
+function checkAchievementsOnSolve(ch, ctx) {
+  const u = users[currentUser];
+  ensureUserState(currentUser);
+
+  if (u.stats.solved === 1) unlockAchievement('first_blood');
+  if (u.stats.solved === 5) unlockAchievement('five_solves');
+  if (u.stats.solved === 10) unlockAchievement('ten_solves');
+  if (!ctx.hint) unlockAchievement('no_hint_solve');
+  if (ctx.attempts >= 3) unlockAchievement('comeback');
+
+  const solvedChallenges = u.progress.solvedIds.map(id => challenges.find(c => c.id === id)).filter(Boolean);
+  const webCount = solvedChallenges.filter(c => c.cat === 'web').length;
+  const cryptoCount = solvedChallenges.filter(c => c.cat === 'crypto').length;
+  if (webCount >= 3) unlockAchievement('web_mastery');
+  if (cryptoCount >= 3) unlockAchievement('crypto_mastery');
+}
+
+function confettiBurst() {
+  const layer = document.getElementById('confetti');
+  if (!layer) return;
+  layer.style.display = 'block';
+  layer.innerHTML = '';
+  const colors = ['#00f5c4', '#7c3aed', '#f59e0b', '#3b82f6', '#10b981', '#ef4444'];
+  const count = 80;
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti';
+    const size = Math.floor(Math.random() * 6) + 6;
+    el.style.width = size + 'px';
+    el.style.height = (size + 4) + 'px';
+    el.style.left = Math.random() * 100 + 'vw';
+    el.style.background = colors[i % colors.length];
+    el.style.borderRadius = Math.random() > 0.7 ? '50%' : '2px';
+    const dur = (Math.random() * 1.2 + 1.8).toFixed(2);
+    const delay = (Math.random() * 0.2).toFixed(2);
+    el.style.animation = `confettiFall ${dur}s linear ${delay}s forwards`;
+    layer.appendChild(el);
+  }
+  clearTimeout(confettiTimer);
+  confettiTimer = setTimeout(() => { layer.style.display = 'none'; layer.innerHTML = ''; }, 2600);
+}
 
 // AUTH
 function switchTab(tab) {
@@ -410,6 +643,9 @@ function handleLogin(e) {
   const p = document.getElementById('login-pass').value;
   const err = document.getElementById('login-err');
   if (!u || !p) { err.textContent = 'Please fill in all fields.'; err.classList.add('show'); return; }
+  // Load persisted accounts on demand
+  const stored = loadStorage();
+  Object.assign(users, stored.users || {});
   if (!users[u]) { err.textContent = 'Account not found. Please register first.'; err.classList.add('show'); return; }
   if (users[u].password !== p) { err.textContent = 'Incorrect password.'; err.classList.add('show'); return; }
   err.classList.remove('show');
@@ -425,9 +661,12 @@ function handleRegister(e) {
   const ok = document.getElementById('reg-ok');
   if (!u || !em || !p) { err.textContent = 'Please fill in all fields.'; err.classList.add('show'); return; }
   if (p.length < 6) { err.textContent = 'Password must be at least 6 characters.'; err.classList.add('show'); return; }
+  const stored = loadStorage();
+  Object.assign(users, stored.users || {});
   if (users[u]) { err.textContent = 'Username already taken.'; err.classList.add('show'); return; }
   err.classList.remove('show');
-  users[u] = { password: p, email: em, score: 0, solved: 0, lastSolve: '—' };
+  users[u] = { password: p, email: em, stats: { score: 0, solved: 0, lastSolveTs: 0, xp: 0 }, progress: { solvedIds: [], attempts: {}, hintUsed: {}, achievements: [] } };
+  saveStorage();
   ok.textContent = 'Account created! Logging you in...';
   ok.classList.add('show');
   setTimeout(() => enterApp(u, false), 1000);
@@ -435,16 +674,17 @@ function handleRegister(e) {
 
 function enterAsGuest() {
   const guestName = 'guest_' + Math.floor(Math.random() * 9000 + 1000);
-  users[guestName] = { password: '', email: '', score: 0, solved: 0, lastSolve: '—' };
+  users[guestName] = { password: '', email: '', stats: { score: 0, solved: 0, lastSolveTs: 0, xp: 0 }, progress: { solvedIds: [], attempts: {}, hintUsed: {}, achievements: [] } };
   enterApp(guestName, true);
 }
 
 function enterApp(username, isGuest) {
   currentUser = username;
+  ensureUserState(username);
   document.getElementById('auth-screen').classList.add('hidden');
   document.getElementById('app').style.display = 'block';
   document.getElementById('nav-username').textContent = username + (isGuest ? ' (guest)' : '');
-  document.getElementById('nav-score').textContent = '0 pts';
+  updateNavStats();
   buildLeaderboard();
   renderChallenges('all');
   renderLeaderboard();
@@ -454,7 +694,6 @@ function enterApp(username, isGuest) {
 
 function logout() {
   currentUser = null;
-  challenges.forEach(c => c.solved = false);
   document.getElementById('app').style.display = 'none';
   document.getElementById('auth-screen').classList.remove('hidden');
   document.getElementById('login-user').value = '';
@@ -465,7 +704,8 @@ function logout() {
 // LEADERBOARD
 function buildLeaderboard() {
   leaderboardData = [...seedPlayers];
-  leaderboardData.push({ name: currentUser, score: users[currentUser].score, solved: users[currentUser].solved, last: users[currentUser].lastSolve, isYou: true });
+  ensureUserState(currentUser);
+  leaderboardData.push({ name: currentUser, score: users[currentUser].stats.score, solved: users[currentUser].stats.solved, last: formatLastSolve(users[currentUser].stats.lastSolveTs), isYou: true });
   leaderboardData.sort((a, b) => b.score - a.score);
 }
 
@@ -488,10 +728,13 @@ function renderLeaderboard() {
 }
 
 function updateUserScore(pts, challengeTitle) {
-  users[currentUser].score += pts;
-  users[currentUser].solved += 1;
-  users[currentUser].lastSolve = 'just now';
-  document.getElementById('nav-score').textContent = users[currentUser].score.toLocaleString() + ' pts';
+  ensureUserState(currentUser);
+  users[currentUser].stats.score += pts;
+  users[currentUser].stats.solved += 1;
+  users[currentUser].stats.lastSolveTs = Date.now();
+  awardXP(pts);
+  updateNavStats();
+  saveStorage();
   buildLeaderboard();
   renderLeaderboard();
   showToast('+ ' + pts + ' pts — ' + challengeTitle + ' captured!');
@@ -504,7 +747,8 @@ function renderChallenges(filter) {
   const filtered = currentFilter === 'all' ? challenges : challenges.filter(c => c.cat === currentFilter);
   grid.innerHTML = filtered.map(c => {
     const dots = Array(5).fill(0).map((_, i) => `<div class="diff-dot${i < c.diff ? ' filled' : ''}"></div>`).join('');
-    return `<div class="challenge-card ${c.cat}${c.solved ? ' solved' : ''}" onclick="openModal(${c.id})">
+    const solved = currentUser ? isSolved(c.id) : false;
+    return `<div class="challenge-card ${c.cat}${solved ? ' solved' : ''}" onclick="openModal(${c.id})">
       <div class="card-cat ${c.cat}">${catLabels[c.cat]}</div>
       <div class="card-title">${c.title}</div>
       <div class="card-desc">${c.desc}</div>
@@ -535,6 +779,8 @@ function openModal(id) {
   document.getElementById('flag-input').value = '';
   const msg = document.getElementById('flag-msg');
   msg.className = 'flag-msg'; msg.textContent = '';
+  document.getElementById('challenge-modal').classList.remove('success');
+  renderModalStats();
   document.getElementById('modal').classList.add('open');
 }
 function closeModal() { document.getElementById('modal').classList.remove('open'); currentChallenge = null; }
@@ -543,25 +789,45 @@ function toggleHint() {
   const box = document.getElementById('hint-box');
   const btn = document.getElementById('hint-toggle-btn');
   box.classList.toggle('open');
-  btn.textContent = box.classList.contains('open') ? '💡 Hide Hint' : '💡 Show Hint';
+  const nowOpen = box.classList.contains('open');
+  btn.textContent = nowOpen ? '💡 Hide Hint' : '💡 Show Hint';
+  if (nowOpen && currentChallenge && currentUser && !isHintUsed(currentChallenge.id)) {
+    setHintUsed(currentChallenge.id);
+    saveStorage();
+    renderModalStats();
+    showToast('Hint used (points penalty applied).');
+  }
 }
 function submitFlag() {
   const input = document.getElementById('flag-input').value.trim();
   const msg = document.getElementById('flag-msg');
-  if (!input) return;
+  if (!input || !currentChallenge) return;
+
   if (input === currentChallenge.flag) {
-    if (currentChallenge.solved) {
+    if (isSolved(currentChallenge.id)) {
       msg.textContent = 'Already solved — no duplicate points.';
       msg.className = 'flag-msg wrong';
       return;
     }
-    msg.textContent = '✓ Correct! Flag captured. +' + currentChallenge.pts + ' points';
+
+    const ctx = computeAwardPoints(currentChallenge);
+    msg.textContent = `✓ Correct! Flag captured. +${ctx.award} points`;
     msg.className = 'flag-msg correct';
-    currentChallenge.solved = true;
-    updateUserScore(currentChallenge.pts, currentChallenge.title);
+
+    markSolved(currentChallenge.id);
+    updateUserScore(ctx.award, currentChallenge.title);
+    checkAchievementsOnSolve(currentChallenge, ctx);
+    saveStorage();
     renderChallenges();
+    renderModalStats();
+
+    document.getElementById('challenge-modal').classList.add('success');
+    confettiBurst();
   } else {
-    msg.textContent = '✗ Incorrect flag. Keep trying.';
+    incrementAttempt(currentChallenge.id);
+    saveStorage();
+    renderModalStats();
+    msg.textContent = '✗ Incorrect flag. Try again — points will drop with each wrong submit.';
     msg.className = 'flag-msg wrong';
   }
 }
@@ -587,10 +853,17 @@ function goTo(page) {
 let toastTimer;
 function showToast(msg) {
   const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
+  // Avoid emoji/toasts breaking if fonts don't support them
+  t.textContent = String(msg); t.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
 }
+
+// Boot: load persisted users for login/register UX
+(() => {
+  const stored = loadStorage();
+  Object.assign(users, stored.users || {});
+})();
 </script>
 </body>
 </html>

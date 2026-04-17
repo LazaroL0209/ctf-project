@@ -186,6 +186,14 @@
 
     .stats span { display: flex; flex-direction: column; gap: 2px; }
     .stats strong { font-size: 15px; color: #94a3b8; font-weight: 600; }
+
+    /* Gamification extras */
+    .badge-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;color:#4ade80;background:#052e16;border:1px solid #166534;padding:4px 8px;border-radius:6px}
+    .badge.locked{opacity:.4;color:#94a3b8;background:#0b1220;border-color:#2d3148}
+    .confetti-layer{position:fixed;inset:0;pointer-events:none;z-index:50;overflow:hidden;display:none}
+    .confetti{position:absolute;top:-10px;width:10px;height:14px;opacity:.95}
+    @keyframes confettiFall{0%{transform:translate3d(0,-20px,0) rotate(0deg);opacity:1}100%{transform:translate3d(0,110vh,0) rotate(720deg);opacity:.9}}
   </style>
 </head>
 <body>
@@ -248,14 +256,93 @@
       <span><strong id="hints-used">0</strong>Hints used</span>
     </div>
 
+    <div class="badge-row" id="badges"></div>
+
   </div>
+
+  <div class="confetti-layer" id="confetti"></div>
 
   <script>
     // ── State ──────────────────────────────────────────────
-    let attempts = 0;
-    let score = 100;
+    const STORAGE_KEY = 'ctf_challenge_v1';
+    const BASE_POINTS = 100;
+    const ATTEMPT_PENALTY = 10;
+    const HINT_PENALTY = 15;
+
+    let attempts = 0;     // wrong attempts only
+    let score = BASE_POINTS;
     let hintsUsed = 0;
     let solved = false;
+
+    const ACH = [
+      { id: 'solve', name: 'Solved', desc: 'Capture the flag.' },
+      { id: 'no_hint', name: 'No Hint', desc: 'Solve without using any hints.' },
+      { id: 'comeback', name: 'Comeback', desc: 'Solve after 3+ wrong attempts.' },
+    ];
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const s = JSON.parse(raw);
+        attempts = Number(s.attempts || 0);
+        score = Number(s.score ?? BASE_POINTS);
+        hintsUsed = Number(s.hintsUsed || 0);
+        solved = !!s.solved;
+      } catch {}
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ attempts, score, hintsUsed, solved }));
+    }
+
+    function computeBadges() {
+      const owned = new Set();
+      if (solved) owned.add('solve');
+      if (solved && hintsUsed === 0) owned.add('no_hint');
+      if (solved && attempts >= 3) owned.add('comeback');
+      return owned;
+    }
+
+    function renderBadges() {
+      const owned = computeBadges();
+      document.getElementById('badges').innerHTML = ACH.map(a => {
+        const locked = !owned.has(a.id);
+        return `<span class="badge ${locked ? 'locked' : ''}" title="${a.desc}">${a.name}</span>`;
+      }).join('');
+    }
+
+    let confettiTimer;
+    function confettiBurst() {
+      const layer = document.getElementById('confetti');
+      layer.style.display = 'block';
+      layer.innerHTML = '';
+      const colors = ['#4ade80','#60a5fa','#a78bfa','#fbbf24','#f87171'];
+      for (let i = 0; i < 70; i++) {
+        const el = document.createElement('div');
+        el.className = 'confetti';
+        const size = Math.floor(Math.random() * 6) + 6;
+        el.style.width = size + 'px';
+        el.style.height = (size + 4) + 'px';
+        el.style.left = Math.random() * 100 + 'vw';
+        el.style.background = colors[i % colors.length];
+        el.style.borderRadius = Math.random() > 0.7 ? '50%' : '2px';
+        const dur = (Math.random() * 1.2 + 1.8).toFixed(2);
+        const delay = (Math.random() * 0.15).toFixed(2);
+        el.style.animation = `confettiFall ${dur}s linear ${delay}s forwards`;
+        layer.appendChild(el);
+      }
+      clearTimeout(confettiTimer);
+      confettiTimer = setTimeout(() => { layer.style.display = 'none'; layer.innerHTML = ''; }, 2400);
+    }
+
+    function syncUI() {
+      document.getElementById('attempt-count').textContent = attempts;
+      document.getElementById('score-display').textContent = score;
+      document.getElementById('hints-used').textContent = hintsUsed;
+      renderBadges();
+      saveState();
+    }
 
     // ── Flag validation (Person 3 implements this section) ──
     // TODO: Replace this placeholder with actual encoded flag comparison.
@@ -269,14 +356,7 @@
 
       if (!input) return;
 
-      attempts++;
-      document.getElementById('attempt-count').textContent = attempts;
-
-      // Deduct points per wrong attempt (Person 5 can adjust this)
-      if (attempts > 1) {
-        score = Math.max(0, score - 10);
-        document.getElementById('score-display').textContent = score;
-      }
+      // Count attempts only on wrong submits (keeps feedback meaningful)
 
       // ── TODO: Replace placeholder with real flag check ──────
       // Example using SubtleCrypto SHA-256:
@@ -298,9 +378,14 @@
         feedback.textContent = 'Correct! Well done — you found the flag. Final score: ' + score + ' points.';
         document.getElementById('flag-input').disabled = true;
         document.querySelector('.submit-btn').disabled = true;
+        syncUI();
+        confettiBurst();
       } else {
+        attempts++;
+        score = Math.max(0, score - ATTEMPT_PENALTY);
         feedback.className = 'feedback error';
         feedback.textContent = 'Incorrect flag. Try again.';
+        syncUI();
       }
     }
 
@@ -314,9 +399,8 @@
         btn.textContent = btn.textContent.replace('Show', 'Hide');
         hintsUsed++;
         document.getElementById('hints-used').textContent = hintsUsed;
-        // Optional: deduct points for using a hint
-        // score = Math.max(0, score - 15);
-        // document.getElementById('score-display').textContent = score;
+        score = Math.max(0, score - HINT_PENALTY);
+        syncUI();
       } else {
         box.classList.remove('visible');
         btn.textContent = btn.textContent.replace('Hide', 'Show');
@@ -327,6 +411,17 @@
     document.getElementById('flag-input').addEventListener('keydown', function(e) {
       if (e.key === 'Enter') checkFlag();
     });
+
+    // Boot persisted state (single-file deliverable friendly)
+    loadState();
+    if (solved) {
+      document.getElementById('flag-input').disabled = true;
+      document.querySelector('.submit-btn').disabled = true;
+      const feedback = document.getElementById('feedback');
+      feedback.className = 'feedback success';
+      feedback.textContent = 'Already solved. Final score: ' + score + ' points.';
+    }
+    syncUI();
   </script>
 </body>
 </html>
