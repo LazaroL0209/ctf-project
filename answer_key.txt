@@ -1,0 +1,13 @@
+HackArena CTF — Answer Key
+==========================
+
+1.  Robots.txt          flag{r0b0ts_txt_f0und}
+2.  View Source         flag{s0urc3_c0d3_s3cr3ts}
+3.  Caesar Salad        flag{julius_would_be_proud}
+4.  Base Jumping        flag{base64_decoded}
+5.  Hex Decoder         flag{hex_is_fun}
+6.  Console Confession  flag{c0ns0l3_1s_y0ur_fr13nd}
+7.  Decode Me           flag{r3v3rs3_3ng1n33r}
+8.  Buffer Overflow     flag{0verfl0w_d3tect3d}
+9.  Binary Basics       flag{binary}
+10. Format String       flag{format_string_leaker}
