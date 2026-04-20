@@ -9,12 +9,12 @@ Built by a team of 6, informed by prior analysis of [picoCTF](https://picoctf.or
 
 | Person | Role |
 |--------|------|
-| Person 1 | UI/HTML structure & file owner |
-| Person 2 | Core puzzle logic (JavaScript) |
-| Person 3 | Flag encoding & answer validation |
-| Person 4 | Challenge text, hints & flavor content |
-| Person 5 | Gamification & feedback elements |
-| Person 6 | Playtesting & QA |
+| Richard | UI/HTML structure & file owner |
+| Lazaro | Core puzzle logic (JavaScript) |
+| Damian | Flag encoding & answer validation |
+| Kayla | Challenge text, hints & flavor content |
+| Luke | Gamification & feedback elements |
+| Miles | Playtesting & QA |
 
 ---
 
