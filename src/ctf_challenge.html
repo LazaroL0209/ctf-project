@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CTF Challenge — [Challenge Name]</title>
+  <title>CTF Challenge — Mirror Gate Lock</title>
   <style>
     /* ── Reset & base ── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -242,6 +242,14 @@
     /* ── Hints ── */
     .hints-section { margin-bottom: 1.5rem; }
 
+    .hints-label {
+      font-size: 12px;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 10px;
+    }
+
     .hint-toggle {
       background: none;
       border: 1px solid #2d3148;
@@ -256,6 +264,7 @@
     }
 
     .hint-toggle:hover { border-color: #4f5b8a; color: #94a3b8; }
+    .hint-toggle.used { border-color: #3b4f7a; color: #7b93c4; }
 
     .hint-box {
       display: none;
@@ -266,6 +275,7 @@
       font-size: 13px;
       color: #94a3b8;
       margin-top: 8px;
+      margin-bottom: 4px;
       line-height: 1.6;
     }
 
@@ -355,16 +365,21 @@
       <span>Category: Source Inspection</span>
     </div>
 
-    <!-- Description -->
+    <!-- ── DESCRIPTION (Kayla — Role 04) ── -->
     <div class="description">
-      This challenge has two CTF steps. First, open the lock by solving the dial
-      clue. Then use what the lock reveals to recover a token from encoded data
-      and combine it with a key fragment hidden in the page source.
+      A decommissioned relay station has come back online — but its access panel
+      is locked behind a calibration sequence no one remembers. Intercepted
+      transmissions suggest the code was designed to be obvious to anyone paying
+      attention. Once you crack the lock, the station begins broadcasting
+      an encoded payload. Somewhere in the station's wiring, a verification
+      fragment was hardcoded at installation.
       <br><br>
-      Goal: reconstruct the final flag from those two pieces.
-      <br>
+      Your mission: open the lock, recover the payload, find the hidden fragment,
+      and reconstruct the full access token.
+      <br><br>
       Flag format: <code>FLAG{...}</code>
     </div>
+    <!-- ── END DESCRIPTION ── -->
 
     <!-- Puzzle content area -->
     <div class="puzzle-area" id="puzzle-content">
@@ -403,16 +418,38 @@
       </div>
     </div>
 
-    <!-- Hints -->
+    <!-- ── HINTS (Kayla — Role 04) ── -->
     <div class="hints-section">
+      <div class="hints-label">Need a nudge?</div>
+
       <button class="hint-toggle" onclick="toggleHint('hint1', this)">Show Hint 1</button>
       <button class="hint-toggle" onclick="toggleHint('hint2', this)">Show Hint 2</button>
       <button class="hint-toggle" onclick="toggleHint('hint3', this)">Show Hint 3</button>
 
-      <div class="hint-box" id="hint1">Hint 1: Treat this like a real CTF chain: unlock first, investigate second.</div>
-      <div class="hint-box" id="hint2">Hint 2: After the lock opens, use DevTools to inspect the element with id <code>puzzle-shell</code>.</div>
-      <div class="hint-box" id="hint3">Hint 3: Decode the payload with <code>atob(...)</code>, then combine that token with the source key fragment to form <code>FLAG{...}</code>.</div>
+      <!-- Hint 1 — Nudge: points player toward the lock clue without solving it -->
+      <div class="hint-box" id="hint1">
+        <strong>Hint 1:</strong> A palindrome reads the same forwards and backwards.
+        You have three digits to work with — think about which arrangement is
+        the <em>smallest</em> number that satisfies that rule.
+      </div>
+
+      <!-- Hint 2 — Direction: tells player what to do after the lock opens -->
+      <div class="hint-box" id="hint2">
+        <strong>Hint 2:</strong> Once the lock opens, two things become available.
+        One is shown on the page. The other is hidden in the page's HTML structure —
+        open your browser's Developer Tools (F12) and inspect the puzzle element.
+      </div>
+
+      <!-- Hint 3 — Near-spoiler: tells player exactly how to decode and combine -->
+      <div class="hint-box" id="hint3">
+        <strong>Hint 3:</strong> The payload on screen is Base64-encoded. Open the
+        browser console (F12 → Console tab) and run
+        <code>atob("the_payload_string")</code> to decode it.
+        Then find the <code>data-key-frag</code> attribute on the puzzle element
+        and combine both pieces as <code>FLAG{decoded_token_keyfrag}</code>.
+      </div>
     </div>
+    <!-- ── END HINTS ── -->
 
     <!-- Submission -->
     <div class="submission">
@@ -496,7 +533,6 @@
     function triggerCompletionEffect(isFinal) {
       const burst = document.getElementById('completion-burst');
       burst.classList.remove('active', 'final');
-      // Force reflow so repeated completions retrigger the animation.
       void burst.offsetWidth;
       burst.classList.add('active');
       if (isFinal) {
@@ -521,7 +557,6 @@
       attempts++;
       document.getElementById('attempt-count').textContent = attempts;
 
-      // Deduct points per wrong attempt (Person 5 can adjust this)
       if (attempts > 1) {
         score = Math.max(0, score - 10);
         document.getElementById('score-display').textContent = score;
@@ -547,7 +582,7 @@
       }
     }
 
-    // ── Hint toggle (Person 5 can enhance with scoring) ──
+    // ── Hint toggle ──
     function toggleHint(id, btn) {
       const box = document.getElementById(id);
       const isVisible = box.classList.contains('visible');
@@ -555,11 +590,9 @@
       if (!isVisible) {
         box.classList.add('visible');
         btn.textContent = btn.textContent.replace('Show', 'Hide');
+        btn.classList.add('used');
         hintsUsed++;
         document.getElementById('hints-used').textContent = hintsUsed;
-        // Optional: deduct points for using a hint
-        // score = Math.max(0, score - 15);
-        // document.getElementById('score-display').textContent = score;
       } else {
         box.classList.remove('visible');
         btn.textContent = btn.textContent.replace('Hide', 'Show');
