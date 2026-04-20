@@ -77,11 +77,166 @@
       border-radius: 8px;
       padding: 1.25rem;
       margin-bottom: 1.5rem;
-      font-family: "Courier New", monospace;
       font-size: 14px;
       color: #a5f3fc;
-      word-break: break-all;
       line-height: 1.6;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .puzzle-shell {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .puzzle-shell-head {
+      display: grid;
+      gap: .35rem;
+    }
+
+    .puzzle-shell-label {
+      font-size: 12px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: #60a5fa;
+    }
+
+    .puzzle-shell-note {
+      color: #94a3b8;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .dial-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: .75rem;
+    }
+
+    .dial-group {
+      background: #0f1320;
+      border: 1px solid #24304b;
+      border-radius: 10px;
+      padding: .85rem;
+      display: grid;
+      justify-items: center;
+      gap: .45rem;
+    }
+
+    .dial-btn {
+      width: 100%;
+      border: 1px solid #26324f;
+      border-radius: 6px;
+      background: #171d2d;
+      color: #94a3b8;
+      font-size: 12px;
+      padding: .35rem 0;
+      cursor: pointer;
+    }
+
+    .dial-btn:hover {
+      border-color: #3b5bdb;
+      color: #e2e8f0;
+    }
+
+    .dial-value {
+      width: 100%;
+      min-height: 64px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: linear-gradient(180deg, #13192a, #0c1020);
+      color: #f8fafc;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      border: 1px solid #2d3148;
+      font-family: "Courier New", monospace;
+    }
+
+    .puzzle-status {
+      padding: .8rem 1rem;
+      border-radius: 6px;
+      background: #0f172a;
+      border: 1px solid #24304b;
+      color: #94a3b8;
+      font-size: 13px;
+    }
+
+    .puzzle-status.ready {
+      border-color: #166534;
+      color: #4ade80;
+      background: #052e16;
+    }
+
+    .unlock-note {
+      font-size: 13px;
+      color: #94a3b8;
+    }
+
+    .completion-chip {
+      margin-top: .25rem;
+      font-size: 11px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: #86efac;
+      background: rgba(22, 101, 52, 0.2);
+      border: 1px solid rgba(22, 101, 52, 0.6);
+      border-radius: 999px;
+      padding: .25rem .55rem;
+      width: fit-content;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity .25s, transform .25s;
+    }
+
+    .completion-chip.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .completion-burst {
+      position: absolute;
+      inset: -20%;
+      border-radius: 50%;
+      pointer-events: none;
+      opacity: 0;
+      background: radial-gradient(circle, rgba(74, 222, 128, 0.34) 0%, rgba(59, 130, 246, 0.18) 35%, rgba(15, 23, 42, 0) 70%);
+      transform: scale(.85);
+    }
+
+    .completion-burst.active {
+      animation: completionFlash .95s ease-out;
+    }
+
+    .completion-burst.active.final {
+      animation: completionFlashFinal 1.2s ease-out;
+    }
+
+    @keyframes completionFlash {
+      0% { opacity: 0; transform: scale(.82); }
+      25% { opacity: 1; }
+      100% { opacity: 0; transform: scale(1.18); }
+    }
+
+    @keyframes completionFlashFinal {
+      0% { opacity: 0; transform: scale(.75); }
+      20% { opacity: 1; }
+      100% { opacity: 0; transform: scale(1.32); }
+    }
+
+    @keyframes dialCelebrate {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 0 rgba(74, 222, 128, 0); }
+      50% { transform: scale(1.04); box-shadow: 0 0 22px rgba(74, 222, 128, 0.22); }
+    }
+
+    .card.solved .puzzle-area {
+      border-color: #166534;
+      box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.08) inset;
+    }
+
+    .card.solved .dial-value {
+      animation: dialCelebrate .95s ease-in-out 3;
     }
 
     /* ── Hints ── */
@@ -192,37 +347,71 @@
   <div class="card">
 
     <!-- Header -->
-    <span class="badge">Cryptography</span>
-    <h1>[Challenge Name Here]</h1>
+    <span class="badge">Web + Crypto</span>
+    <h1>Mirror Gate Lock</h1>
     <div class="meta">
       <span>Difficulty: Beginner</span>
       <span>Points: 100</span>
-      <span>Category: [Category]</span>
+      <span>Category: Source Inspection</span>
     </div>
 
-    <!-- Description (Person 4 fills this in) -->
+    <!-- Description -->
     <div class="description">
-      [Challenge description goes here. Give the player enough context to understand
-      what they are looking for and what format the flag will be in. Do not give away
-      the solution — just set the scene.]
+      This challenge has two CTF steps. First, open the lock by solving the dial
+      clue. Then use what the lock reveals to recover a token from encoded data
+      and combine it with a key fragment hidden in the page source.
       <br><br>
+      Goal: reconstruct the final flag from those two pieces.
+      <br>
       Flag format: <code>FLAG{...}</code>
     </div>
 
-    <!-- Puzzle content area (Person 2 puts the puzzle here) -->
+    <!-- Puzzle content area -->
     <div class="puzzle-area" id="puzzle-content">
-      [Encoded message, cipher text, hidden content, or puzzle goes here]
+      <div class="puzzle-shell" id="puzzle-shell" data-key-frag="verified">
+        <div class="puzzle-shell-head">
+          <div class="puzzle-shell-label">Calibration Lock</div>
+          <div class="puzzle-shell-note">
+            Clue: the answer uses the digits 1, 2, and 3, but the code is the
+            smallest three-digit palindrome you can make from them.
+          </div>
+        </div>
+
+        <div class="dial-row" aria-label="Three digit lock">
+          <div class="dial-group">
+            <button class="dial-btn" type="button" onclick="adjustDial(0, -1)">▲</button>
+            <div class="dial-value" id="dial-0">0</div>
+            <button class="dial-btn" type="button" onclick="adjustDial(0, 1)">▼</button>
+          </div>
+          <div class="dial-group">
+            <button class="dial-btn" type="button" onclick="adjustDial(1, -1)">▲</button>
+            <div class="dial-value" id="dial-1">0</div>
+            <button class="dial-btn" type="button" onclick="adjustDial(1, 1)">▼</button>
+          </div>
+          <div class="dial-group">
+            <button class="dial-btn" type="button" onclick="adjustDial(2, -1)">▲</button>
+            <div class="dial-value" id="dial-2">0</div>
+            <button class="dial-btn" type="button" onclick="adjustDial(2, 1)">▼</button>
+          </div>
+        </div>
+
+        <div class="puzzle-status" id="puzzle-status">Lock sealed. Align the dials to continue.</div>
+        <div class="unlock-note" id="unlock-note">Once the panel opens, a calibration phrase will appear here.</div>
+        <div class="unlock-note" id="payload-note">Transmission payload: [LOCKED]</div>
+        <div class="completion-chip" id="completion-chip">Lock Calibrated</div>
+        <div class="completion-burst" id="completion-burst" aria-hidden="true"></div>
+      </div>
     </div>
 
-    <!-- Hints (Person 4 writes these) -->
+    <!-- Hints -->
     <div class="hints-section">
       <button class="hint-toggle" onclick="toggleHint('hint1', this)">Show Hint 1</button>
       <button class="hint-toggle" onclick="toggleHint('hint2', this)">Show Hint 2</button>
       <button class="hint-toggle" onclick="toggleHint('hint3', this)">Show Hint 3</button>
 
-      <div class="hint-box" id="hint1">Hint 1: [Gentle nudge — points the player in the right direction without giving anything away]</div>
-      <div class="hint-box" id="hint2">Hint 2: [More direct — tells the player what technique to use]</div>
-      <div class="hint-box" id="hint3">Hint 3: [Near-spoiler — walks the player up to the answer without fully revealing it]</div>
+      <div class="hint-box" id="hint1">Hint 1: Treat this like a real CTF chain: unlock first, investigate second.</div>
+      <div class="hint-box" id="hint2">Hint 2: After the lock opens, use DevTools to inspect the element with id <code>puzzle-shell</code>.</div>
+      <div class="hint-box" id="hint3">Hint 3: Decode the payload with <code>atob(...)</code>, then combine that token with the source key fragment to form <code>FLAG{...}</code>.</div>
     </div>
 
     <!-- Submission -->
@@ -241,7 +430,7 @@
     <!-- Feedback -->
     <div class="feedback" id="feedback"></div>
 
-    <!-- Stats (Person 5 extends this) -->
+    <!-- Stats -->
     <div class="stats">
       <span><strong id="attempt-count">0</strong>Attempts</span>
       <span><strong id="score-display">100</strong>Points remaining</span>
@@ -256,11 +445,65 @@
     let score = 100;
     let hintsUsed = 0;
     let solved = false;
+    let lockSolved = false;
+    const lockDigits = [0, 0, 0];
+    const targetCode = [1, 2, 1];
+    const transmissionPayload = 'cGFja2V0X3RyYWNl';
+    const flagHash = 'ad910b9aa3fe0329a1385766970007234a9325e39d141f695e6de8f83ea58169';
 
-    // ── Flag validation (Person 3 implements this section) ──
-    // TODO: Replace this placeholder with actual encoded flag comparison.
-    // Do NOT store the plain-text flag here.
-    // Options: SHA-256 hash compare, XOR decode, base64 + reverse, etc.
+    function renderLock() {
+      lockDigits.forEach((digit, index) => {
+        document.getElementById('dial-' + index).textContent = digit;
+      });
+
+      const status = document.getElementById('puzzle-status');
+      const note = document.getElementById('unlock-note');
+      const isComplete = lockDigits.every((digit, index) => digit === targetCode[index]);
+
+      if (isComplete && !lockSolved) {
+        lockSolved = true;
+        status.classList.add('ready');
+        status.textContent = 'Lock open. Calibration accepted.';
+        note.textContent = 'Stage 2 unlocked. Recover the token and source key fragment.';
+        document.getElementById('payload-note').textContent = 'Transmission payload: ' + transmissionPayload;
+        console.info('[ctf] Stage 2 active. Decode the payload and inspect #puzzle-shell for a key fragment.');
+        document.getElementById('completion-chip').textContent = 'Lock Calibrated';
+        document.getElementById('completion-chip').classList.add('visible');
+        triggerCompletionEffect(false);
+      } else if (!isComplete) {
+        lockSolved = false;
+        status.classList.remove('ready');
+        status.textContent = 'Lock sealed. Align the dials to continue.';
+        note.textContent = 'Once the panel opens, stage 2 data will appear here.';
+        document.getElementById('payload-note').textContent = 'Transmission payload: [LOCKED]';
+        if (!solved) {
+          document.getElementById('completion-chip').classList.remove('visible');
+        }
+      }
+    }
+
+    function adjustDial(index, delta) {
+      lockDigits[index] = (lockDigits[index] + delta + 10) % 10;
+      renderLock();
+    }
+
+    async function hashInput(value) {
+      const encoded = new TextEncoder().encode(value);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', encoded);
+      return Array.from(new Uint8Array(hashBuffer), byte => byte.toString(16).padStart(2, '0')).join('');
+    }
+
+    function triggerCompletionEffect(isFinal) {
+      const burst = document.getElementById('completion-burst');
+      burst.classList.remove('active', 'final');
+      // Force reflow so repeated completions retrigger the animation.
+      void burst.offsetWidth;
+      burst.classList.add('active');
+      if (isFinal) {
+        burst.classList.add('final');
+      }
+    }
+
     async function checkFlag() {
       if (solved) return;
 
@@ -268,6 +511,12 @@
       const feedback = document.getElementById('feedback');
 
       if (!input) return;
+
+      if (!lockSolved) {
+        feedback.className = 'feedback error';
+        feedback.textContent = 'The lock is still sealed. Solve the dial puzzle first.';
+        return;
+      }
 
       attempts++;
       document.getElementById('attempt-count').textContent = attempts;
@@ -278,29 +527,23 @@
         document.getElementById('score-display').textContent = score;
       }
 
-      // ── TODO: Replace placeholder with real flag check ──────
-      // Example using SubtleCrypto SHA-256:
-      //
-      // const encoder = new TextEncoder();
-      // const data = encoder.encode(input);
-      // const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      // const hashArray = Array.from(new Uint8Array(hashBuffer));
-      // const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-      // const CORRECT_HASH = 'paste_your_sha256_hash_here';
-      // const isCorrect = (hashHex === CORRECT_HASH);
-      //
-      // For now, using a direct comparison as a placeholder:
-      const isCorrect = (input === 'FLAG{replace_with_your_flag}'); // PLACEHOLDER — Person 3 replaces this
+      const hashHex = await hashInput(input);
+      const isCorrect = (hashHex === flagHash);
 
       if (isCorrect) {
         solved = true;
+        document.querySelector('.card').classList.add('solved');
         feedback.className = 'feedback success';
         feedback.textContent = 'Correct! Well done — you found the flag. Final score: ' + score + ' points.';
         document.getElementById('flag-input').disabled = true;
         document.querySelector('.submit-btn').disabled = true;
+        document.getElementById('unlock-note').textContent = 'Flag confirmed. You completed both CTF stages.';
+        document.getElementById('completion-chip').textContent = 'Challenge Completed';
+        document.getElementById('completion-chip').classList.add('visible');
+        triggerCompletionEffect(true);
       } else {
         feedback.className = 'feedback error';
-        feedback.textContent = 'Incorrect flag. Try again.';
+        feedback.textContent = 'Incorrect flag. Re-check your decoded token and source key fragment.';
       }
     }
 
@@ -327,6 +570,8 @@
     document.getElementById('flag-input').addEventListener('keydown', function(e) {
       if (e.key === 'Enter') checkFlag();
     });
+
+    renderLock();
   </script>
 </body>
 </html>

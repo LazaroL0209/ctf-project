@@ -37,7 +37,7 @@ _Brief note on why this category fit best given the group's analysis of picoCTF 
 | Task | Assigned to | Notes |
 |------|-------------|-------|
 | HTML skeleton & CSS | Person 1 | |
-| Puzzle mechanic (JS) | Person 2 | |
+| Puzzle mechanic (JS) | Lazaro | Three-dial palindrome lock |
 | Flag encoding & validation | Person 3 | |
 | Challenge text & hints | Person 4 | |
 | Gamification elements | Person 5 | |

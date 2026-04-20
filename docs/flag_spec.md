@@ -1,12 +1,12 @@
 # Flag Specification
 
-_Completed by Person 2 and Person 3 on Days 2–3. Keep this file private — do not share the plain-text flag publicly._
+_Completed by Lazaro and Person 3 on Days 2–3. Keep this file private — do not share the plain-text flag publicly._
 
 ---
 
 ## Flag string
 
-**Plain-text flag:** (do not commit this — share only with Person 2 and Person 3 directly)
+**Plain-text flag:** withheld from the repo; validation uses the encoded value in `src/ctf_challenge.html`
 
 **Flag format:** `FLAG{_______________}`
 
@@ -24,15 +24,19 @@ _Completed by Person 2 and Person 3 on Days 2–3. Keep this file private — do
 
 Describe the submission handler logic step by step:
 
-1.
-2.
-3.
+1. The player solves the three-dial lock in the puzzle area.
+2. The submission handler hashes the entered flag with SHA-256.
+3. The hash is compared against the stored digest and success/failure is shown.
 
 ---
 
 ## Code notes
 
 _Any important notes about how the encoding is implemented in the HTML file — so Person 1 can integrate it correctly._
+
+The lock uses a simple JavaScript state machine for the dials, and the flag is
+verified with `crypto.subtle.digest('SHA-256', ...)` so the plain-text answer
+is never embedded in the source.
 
 ---
 

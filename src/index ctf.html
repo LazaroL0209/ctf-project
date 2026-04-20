@@ -146,12 +146,14 @@
   .team-name{font-size:0.875rem;font-weight:600;color:var(--text);margin-bottom:0.25rem;}
   .team-role{font-family:'Share Tech Mono',monospace;font-size:0.65rem;color:var(--text2);letter-spacing:1px;}
 
-  /* MODAL */
-  .modal-overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.85);align-items:center;justify-content:center;padding:1rem;}
-  .modal-overlay.open{display:flex;}
-  .modal{background:var(--bg2);border:1px solid var(--border);max-width:560px;width:100%;padding:2rem;position:relative;animation:fadeInUp 0.25s ease;max-height:90vh;overflow-y:auto;}
-  .modal-close{position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--text2);font-size:1.25rem;cursor:pointer;}
-  .modal-close:hover{color:var(--text);}
+  /* PLAY WINDOW */
+  .play-wrap{max-width:780px;margin:2rem auto;padding:0 1rem 2rem;position:relative;}
+  .play-card{background:var(--bg2);border:1px solid var(--border);padding:2rem;position:relative;animation:fadeInUp 0.25s ease;}
+  .play-back{display:inline-flex;align-items:center;gap:8px;margin-bottom:1rem;background:transparent;border:1px solid rgba(255,255,255,0.18);color:var(--text2);padding:8px 14px;font-family:'Exo 2',sans-serif;font-size:0.82rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all 0.2s;}
+  .play-back:hover{color:var(--accent);border-color:var(--accent);}
+  .play-complete{display:none;margin-top:1rem;padding:10px 12px;border:1px solid rgba(16,185,129,0.5);background:rgba(16,185,129,0.1);color:var(--green);font-family:'Share Tech Mono',monospace;font-size:0.8rem;letter-spacing:1px;text-transform:uppercase;}
+  .play-complete.show{display:block;animation:fadeInDown 0.3s ease;}
+
   .modal-cat{font-family:'Share Tech Mono',monospace;font-size:0.7rem;letter-spacing:2px;margin-bottom:0.75rem;}
   .modal-title{font-family:'Rajdhani',sans-serif;font-size:1.8rem;font-weight:700;margin-bottom:0.5rem;}
   .modal-points{font-family:'Share Tech Mono',monospace;color:var(--accent);font-size:1rem;margin-bottom:1.25rem;}
@@ -189,6 +191,15 @@
   /* PENALTY */
   .penalty-msg{font-family:'Share Tech Mono',monospace;font-size:0.78rem;color:var(--red);margin-top:0.5rem;display:none;padding:6px 10px;border:1px solid rgba(239,68,68,0.25);background:rgba(239,68,68,0.07);}
   .penalty-msg.show{display:block;}
+
+  /* GUIDANCE PULSE */
+  .guide-pulse{position:fixed;z-index:1200;border:2px solid var(--accent3);border-radius:999px;box-shadow:0 0 0 0 rgba(245,158,11,0.6);pointer-events:none;display:none;animation:guidePulse 1.35s infinite;}
+  .guide-note{position:fixed;z-index:1201;display:none;background:rgba(15,21,36,0.96);border:1px solid rgba(245,158,11,0.55);color:#fbbf24;padding:8px 10px;font-family:'Share Tech Mono',monospace;font-size:0.72rem;max-width:300px;line-height:1.5;}
+  @keyframes guidePulse{
+    0%{transform:scale(0.95);box-shadow:0 0 0 0 rgba(245,158,11,0.6);}
+    70%{transform:scale(1.03);box-shadow:0 0 0 22px rgba(245,158,11,0);}
+    100%{transform:scale(0.95);box-shadow:0 0 0 0 rgba(245,158,11,0);}
+  }
 </style>
 </head>
 <body>
@@ -283,7 +294,7 @@
 <div id="page-challenges" class="page">
   <div class="page-header">
     <h2>Challenge <span>Arena</span></h2>
-    <p>Select a category or browse all. Each flag earned adds to your score and the leaderboard.</p>
+    <p id="challenge-page-subtitle">Select a category or browse all. Each flag earned adds to your score and the leaderboard.</p>
   </div>
   <div class="filter-bar">
     <button class="filter-btn active" onclick="filterCards('all',this)">All</button>
@@ -332,10 +343,11 @@
 </div>
 </div><!-- end #app -->
 
-<!-- CHALLENGE MODAL -->
-<div class="modal-overlay" id="modal" onclick="closeModalOnBg(event)">
-  <div class="modal">
-    <button class="modal-close" onclick="closeModal()">&#10005;</button>
+<!-- CHALLENGE PLAY PAGE -->
+<div id="page-play" class="page">
+  <div class="play-wrap">
+    <button class="play-back" onclick="goTo('challenges')">&larr; Back to Challenges</button>
+    <div class="play-card">
     <div class="modal-cat" id="m-cat"></div>
     <div class="modal-title" id="m-title"></div>
     <div class="modal-points" id="m-pts"></div>
@@ -348,14 +360,19 @@
     </div>
     <div class="flag-msg" id="flag-msg"></div>
     <div class="penalty-msg" id="penalty-msg"></div>
+    <div class="play-complete" id="play-complete">Challenge Completed</div>
+    </div>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
+<div class="guide-pulse" id="guide-pulse"></div>
+<div class="guide-note" id="guide-note">Need a nudge? Focus here next.</div>
 <!-- challenge 2: view source flag -->
 <!-- flag{s0urc3_c0d3_s3cr3ts} -->
 <!-- challenge 3: inspector gadget hidden element -->
 <span id="hidden-flag" style="display:none">flag{d3v_t00ls_4_lyf3}</span>
+<span id="mirror-key-frag" data-frag="verified" style="display:none"></span>
 
 <script>
 const challenges = [
@@ -388,6 +405,9 @@ const challenges = [
 
   {id:10, cat:'misc',     diff:3, title:'Format String',      pts:200, solves:143, solved:false, flag:'flag{format_string_leaker}',   hint:'The flag is already visible in the output below — read it carefully',
    desc:'A format string vulnerability causes a program to accidentally print data from its own memory. This happens when user input is passed directly to a print function without any formatting rules.\n\nThe output below was captured from a real vulnerable program. One of the values it leaked is the flag — no tools needed, just read it carefully:\n\n0x41414141  0x00007fff  0x00400080  flag{format_string_leaker}  0x00000000\n\nFind the flag in the memory dump above and submit it.'},
+
+  {id:11, cat:'web',      diff:2, title:'Mirror Gate',         pts:180, solves:96, solved:false, flag:'', hint:'Open DevTools and recover two parts: decode mirrorPayload with atob(...), then inspect #mirror-key-frag for its data fragment.',
+   desc:'A mirrored gateway is leaking fragments of a flag in two different places. Your job is to combine them the way analysts do during real CTF reconnaissance.\n\nStep 1: Open the browser Console and decode the transmission payload variable named mirrorPayload.\n\nStep 2: Inspect the page source or Elements panel and find the hidden element with id mirror-key-frag.\n\nStep 3: Build the final flag in this format:\n\nflag{<decoded_payload>_<key_fragment>}\n\nSubmit the final reconstructed flag.'},
 ];
 
 const seedPlayers = [
@@ -421,9 +441,73 @@ let currentUser = null;
 let currentChallenge = null;
 let currentFilter = 'all';
 let leaderboardData = [];
+let totalHintsUsed = Number(localStorage.getItem('ha_total_hints') || '0');
+const challengeParamId = Number(new URLSearchParams(window.location.search).get('challenge') || '0');
+let currentHintStep = 0;
+let activeGuideTarget = null;
+let activeGuideType = '';
+
+const hintPlans = {
+  1: [
+    'Start by reading the text block carefully line by line before typing anything.',
+    'Focus on Disallow entries and comments; secrets are often hidden in plain config text.',
+    'Treat robots.txt like reconnaissance data and extract the exact flag token you find.'
+  ],
+  2: [
+    'This challenge is not solved on the visual page itself.',
+    'Open page source and search for the flag format.',
+    'Look for hidden comments that are invisible in rendered HTML but visible in source.'
+  ],
+  3: [
+    'Recognize the cipher family before decoding.',
+    'ROT13 means alphabetic letters shift by 13 while braces/underscores stay unchanged.',
+    'Decode the whole token consistently, then submit the reconstructed flag.'
+  ],
+  4: [
+    'Identify the encoding first, then choose a decoder.',
+    'Base64 payloads are commonly decoded with browser tools like atob().',
+    'Decode once and verify the output matches flag syntax.'
+  ],
+  5: [
+    'Hex data is usually parsed in byte pairs.',
+    'Convert each pair from base16 to ASCII characters in order.',
+    'Join the decoded characters and check for a valid flag format.'
+  ],
+  6: [
+    'This one depends on runtime logs rather than page text.',
+    'Open DevTools and inspect the Console tab output history.',
+    'Find the token that matches flag syntax among debug messages.'
+  ],
+  7: [
+    'A variable stores the encoded artifact; find that variable first.',
+    'Decode it in the console with a base64 decoder.',
+    'Submit only the decoded flag string, not the encoded payload.'
+  ],
+  8: [
+    'Watch for boundary/length behavior in the submission field.',
+    'Test short input first, then a much longer payload to trigger overflow behavior.',
+    'When the overflow condition appears, capture the returned flag.'
+  ],
+  9: [
+    'Split the binary stream into 8-bit bytes.',
+    'Convert each byte from base2 to its ASCII character.',
+    'Combine decoded bytes and validate final flag syntax.'
+  ],
+  10: [
+    'Read the leaked output as if it were memory disclosure.',
+    'Search for the substring that already matches flag format.',
+    'Submit the exact leaked token without extra symbols.'
+  ],
+  11: [
+    'This is a two-artifact challenge: one decoded piece and one source fragment.',
+    'Decode mirrorPayload in console, then inspect #mirror-key-frag for data-frag.',
+    'Combine both artifacts into flag{decodedPayload_keyFragment} and submit.'
+  ]
+};
 
 // ── CHALLENGE GLOBALS ──
 var encodedSecret = btoa('flag{r3v3rs3_3ng1n33r}');          // challenge 12
+var mirrorPayload = 'cGFja2V0X3RyYWNl';                      // challenge 11 payload
 function getSecretFlag(){ return 'flag{metadata_never_lies}'; } // challenge 7
 console.log('flag{c0ns0l3_1s_y0ur_fr13nd}');                  // challenge 8
 console.log('flag{th3_c0ns0l3_kn0ws_4ll}');                   // challenge 15
@@ -588,12 +672,19 @@ function renderChallenges(filter) {
   currentFilter = filter || currentFilter;
   const grid = document.getElementById('challenges-grid');
   const filtered = currentFilter === 'all' ? challenges : challenges.filter(c => c.cat === currentFilter);
+
+  // Keep users informed that every challenge is present for the selected filter.
+  document.getElementById('challenge-page-subtitle').textContent =
+    'Showing ' + filtered.length + ' of ' + challenges.length + ' challenges. Each completion adds to your score.';
+
   grid.innerHTML = filtered.map(c => {
+    const preview = c.desc.replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
+    const shortPreview = preview.length > 170 ? preview.slice(0, 167) + '...' : preview;
     const dots = Array(5).fill(0).map((_, i) => `<div class="diff-dot${i < c.diff ? ' filled' : ''}"></div>`).join('');
-    return `<div class="challenge-card ${c.cat}${c.solved ? ' solved' : ''}" onclick="openModal(${c.id})">
+    return `<div class="challenge-card ${c.cat}${c.solved ? ' solved' : ''}" onclick="launchChallengeWindow(${c.id})">
       <div class="card-cat ${c.cat}">${catLabels[c.cat]}</div>
       <div class="card-title">${c.title}</div>
-      <div class="card-desc">${c.desc}</div>
+      <div class="card-desc">${shortPreview}</div>
       <div class="card-footer"><span class="card-points">${c.pts} pts</span><div class="card-diff">${dots}</div></div>
       <div class="card-solves">${c.solves} solves</div>
     </div>`;
@@ -606,50 +697,146 @@ function filterCards(cat, btn) {
   renderChallenges(cat);
 }
 
-// ── MODAL ──
-function openModal(id) {
+// ── CHALLENGE WINDOW ──
+function launchChallengeWindow(id) {
+  const u = new URL(window.location.href);
+  u.searchParams.set('challenge', String(id));
+  window.open(u.toString(), '_blank', 'noopener');
+}
+
+function openChallengeInView(id) {
   const c = challenges.find(x => x.id === id);
+  if (!c) return;
   currentChallenge = c;
   document.getElementById('m-cat').textContent = catLabels[c.cat];
   document.getElementById('m-cat').style.color = catColors[c.cat];
   document.getElementById('m-title').textContent = c.title;
   document.getElementById('m-pts').textContent = c.pts + ' points · ' + c.solves + ' solves';
   document.getElementById('m-desc').innerHTML = c.desc.replace(/\n/g, '<br><br>');
-  document.getElementById('hint-text').textContent = c.hint;
-  // restore hint state
+  // restore progressive hint state
   const box = document.getElementById('hint-box');
   const btn = document.getElementById('hint-toggle-btn');
-  if (c._hintUsed) {
+  currentHintStep = c._hintStep || 0;
+  if (currentHintStep > 0) {
     box.classList.add('open');
-    btn.textContent = 'Hide Hint (-10 pts already deducted)';
+    setHintStepText(currentChallenge, currentHintStep);
+    btn.textContent = nextHintButtonLabel(currentChallenge, currentHintStep);
   } else {
     box.classList.remove('open');
-    btn.textContent = 'Show Hint (-10 pts)';
+    document.getElementById('hint-text').textContent = '';
+    btn.textContent = 'Show Hint 1 (-10 pts)';
   }
   document.getElementById('flag-input').value = '';
   document.getElementById('flag-msg').className = 'flag-msg';
   document.getElementById('flag-msg').textContent = '';
   document.getElementById('penalty-msg').className = 'penalty-msg';
-  document.getElementById('modal').classList.add('open');
+  document.getElementById('play-complete').classList.remove('show');
+  hideGuidePulse();
+  goTo('play');
 }
 
-function closeModal() { document.getElementById('modal').classList.remove('open'); currentChallenge = null; }
-function closeModalOnBg(e) { if (e.target.id === 'modal') closeModal(); }
+function showGuidePulse(target, message) {
+  const pulse = document.getElementById('guide-pulse');
+  const note = document.getElementById('guide-note');
+  if (!target) return;
+  activeGuideTarget = target;
+  activeGuideType = target.id || '';
+  const rect = target.getBoundingClientRect();
+  const size = Math.max(68, Math.min(140, Math.max(rect.width, rect.height) + 16));
+  pulse.style.width = size + 'px';
+  pulse.style.height = size + 'px';
+  pulse.style.left = (rect.left + (rect.width / 2) - (size / 2)) + 'px';
+  pulse.style.top = (rect.top + (rect.height / 2) - (size / 2)) + 'px';
+  pulse.style.display = 'block';
+  note.textContent = message;
+  note.style.left = Math.max(10, rect.left) + 'px';
+  note.style.top = Math.max(10, rect.top - 44) + 'px';
+  note.style.display = 'block';
+}
+
+function hideGuidePulse() {
+  document.getElementById('guide-pulse').style.display = 'none';
+  document.getElementById('guide-note').style.display = 'none';
+  activeGuideTarget = null;
+  activeGuideType = '';
+}
+
+function resolveGuideByInteraction(target) {
+  if (!activeGuideTarget) return;
+  if (target === activeGuideTarget || activeGuideTarget.contains(target)) {
+    hideGuidePulse();
+    return;
+  }
+  // For nested text nodes and button/icon spans, also allow ancestor match.
+  const inTree = target.closest && target.closest('#' + activeGuideType);
+  if (inTree) {
+    hideGuidePulse();
+  }
+}
+
+function applyAdaptiveGuidance() {
+  if (totalHintsUsed <= 3 || !currentChallenge) return;
+  const text = (currentChallenge.desc + ' ' + currentChallenge.hint).toLowerCase();
+  if (text.includes('console') || text.includes('source') || text.includes('inspect') || text.includes('devtools')) {
+    showGuidePulse(document.getElementById('m-desc'), 'Look in DevTools and inspect this challenge description for exact steps.');
+    return;
+  }
+  if (text.includes('submit') || text.includes('input') || text.includes('flag')) {
+    showGuidePulse(document.getElementById('flag-input'), 'Use this input after you decode the challenge artifact.');
+    return;
+  }
+  showGuidePulse(document.getElementById('hint-toggle-btn'), 'Re-open the hint and follow it step-by-step.');
+}
+
+function showCompletionVisual() {
+  document.getElementById('play-complete').classList.add('show');
+}
+
+function getHintSteps(challenge) {
+  return hintPlans[challenge.id] || [
+    'Break the challenge into smaller steps and identify what artifact you need first.',
+    'Use browser tooling (source, elements, or console) based on what the prompt mentions.',
+    'Validate the reconstructed token against the expected flag format before submitting.'
+  ];
+}
+
+function setHintStepText(challenge, step) {
+  const steps = getHintSteps(challenge);
+  const index = Math.max(0, Math.min(step - 1, steps.length - 1));
+  document.getElementById('hint-text').textContent = 'Step ' + (index + 1) + '/' + steps.length + ': ' + steps[index];
+}
+
+function nextHintButtonLabel(challenge, step) {
+  const max = getHintSteps(challenge).length;
+  if (step >= max) return 'Hide Hint';
+  return 'Show Hint ' + (step + 1) + ' (-10 pts each)';
+}
 
 function toggleHint() {
   const box = document.getElementById('hint-box');
   const btn = document.getElementById('hint-toggle-btn');
-  const wasOpen = box.classList.contains('open');
-  box.classList.toggle('open');
-  if (!wasOpen) {
-    // opening hint
-    if (!currentChallenge._hintUsed && !currentChallenge.solved) {
-      currentChallenge._hintUsed = true;
-      applyPenalty('hint used');
-    }
-    btn.textContent = 'Hide Hint (-10 pts already deducted)';
-  } else {
-    btn.textContent = 'Show Hint (-10 pts)';
+  const maxSteps = getHintSteps(currentChallenge).length;
+
+  if (!box.classList.contains('open')) {
+    box.classList.add('open');
+  }
+
+  if (currentHintStep < maxSteps && !currentChallenge.solved) {
+    currentHintStep += 1;
+    currentChallenge._hintStep = currentHintStep;
+    currentChallenge._hintUsed = true;
+    setHintStepText(currentChallenge, currentHintStep);
+    totalHintsUsed += 1;
+    localStorage.setItem('ha_total_hints', String(totalHintsUsed));
+    applyPenalty('hint step ' + currentHintStep + ' used');
+    applyAdaptiveGuidance();
+    btn.textContent = nextHintButtonLabel(currentChallenge, currentHintStep);
+    return;
+  }
+
+  if (box.classList.contains('open')) {
+    box.classList.remove('open');
+    btn.textContent = nextHintButtonLabel(currentChallenge, currentHintStep);
   }
 }
 
@@ -657,12 +844,41 @@ function submitFlag() {
   const input = document.getElementById('flag-input').value.trim();
   const msg = document.getElementById('flag-msg');
   if (!input) return;
+  // challenge 11 mirror gate: combine decoded payload + source fragment
+  if (currentChallenge.id === 11) {
+    const fragNode = document.getElementById('mirror-key-frag');
+    const keyFrag = fragNode ? fragNode.getAttribute('data-frag') : '';
+    const expected = 'flag{' + atob(mirrorPayload) + '_' + keyFrag + '}';
+    if (input === expected) {
+      if (currentChallenge.solved) {
+        msg.textContent = 'Already solved - no duplicate points.';
+        msg.className = 'flag-msg wrong';
+        return;
+      }
+      msg.textContent = 'Correct! Flag captured. +' + currentChallenge.pts + ' points';
+      msg.className = 'flag-msg correct';
+      currentChallenge.solved = true;
+      hideGuidePulse();
+      showCompletionVisual();
+      updateUserScore(currentChallenge.pts, currentChallenge.title);
+      renderChallenges();
+    } else {
+      if (!currentChallenge.solved) {
+        applyPenalty('wrong answer');
+      }
+      msg.textContent = 'Incorrect flag. Decode the payload and confirm the source fragment.';
+      msg.className = 'flag-msg wrong';
+    }
+    return;
+  }
   // challenge 10 buffer overflow: accept 20+ char input
   if (currentChallenge.id === 8 && input.length >= 20) {
     if (currentChallenge.solved) { msg.textContent = 'Already solved.'; msg.className = 'flag-msg wrong'; return; }
     msg.textContent = 'Overflow detected! Flag: flag{0verfl0w_d3tect3d}';
     msg.className = 'flag-msg correct';
     currentChallenge.solved = true;
+    hideGuidePulse();
+    showCompletionVisual();
     updateUserScore(currentChallenge.pts, currentChallenge.title);
     renderChallenges();
     return;
@@ -676,6 +892,8 @@ function submitFlag() {
     msg.textContent = 'Correct! Flag captured. +' + currentChallenge.pts + ' points';
     msg.className = 'flag-msg correct';
     currentChallenge.solved = true;
+    hideGuidePulse();
+    showCompletionVisual();
     updateUserScore(currentChallenge.pts, currentChallenge.title);
     renderChallenges();
   } else {
@@ -722,7 +940,11 @@ function goTo(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-links li a').forEach(a => a.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
-  document.getElementById('nav-' + page).classList.add('active');
+  const navItem = document.getElementById('nav-' + page);
+  if (navItem) navItem.classList.add('active');
+  if (page !== 'play') {
+    hideGuidePulse();
+  }
   window.scrollTo(0, 0);
 }
 
@@ -736,6 +958,30 @@ function showToast(msg) {
   t.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(function() { t.classList.remove('show'); }, 3500);
+}
+
+// ── GUIDE INTERACTION DISMISS ──
+document.addEventListener('click', function(e) {
+  resolveGuideByInteraction(e.target);
+});
+
+document.getElementById('flag-input').addEventListener('focus', function() {
+  if (activeGuideType === 'flag-input') {
+    hideGuidePulse();
+  }
+});
+
+document.getElementById('flag-input').addEventListener('input', function() {
+  if (activeGuideType === 'flag-input') {
+    hideGuidePulse();
+  }
+});
+
+// ── CHALLENGE WINDOW BOOT ──
+if (challengeParamId > 0) {
+  users['challenge_guest'] = { password: '', email: '', score: 0, solved: 0, lastSolve: '-' };
+  enterApp('challenge_guest', true);
+  openChallengeInView(challengeParamId);
 }
 </script>
 </body>

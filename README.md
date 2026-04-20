@@ -62,20 +62,20 @@ ctf-project/
 - [ ] Person 1 creates the GitHub repo and shares access with the team
 - [ ] Write up the agreed concept in `docs/concept_brief.md`
 
-**Day 2 — Parallel starts (Person 1 + Person 2)**
+**Day 2 — Parallel starts (Person 1 + Lazaro)**
 - [ ] Person 1: create the base `src/ctf_challenge.html` with page skeleton (title, description area, hint toggle, input field, submit button)
 - [ ] Person 1: apply base CSS — clean card layout, readable font, consistent color scheme (reference picoCTF's clean design)
-- [ ] Person 2: begin drafting the puzzle mechanic in a scratch JS file or `<script>` block
-- [ ] Person 2 + Person 3: agree on the exact flag string and where it lives in the code
+- [ ] Lazaro: begin drafting the puzzle mechanic in a scratch JS file or `<script>` block
+- [ ] Lazaro + Person 3: agree on the exact flag string and where it lives in the code
 
-**Day 3 — Puzzle logic (Person 2 + Person 3)**
-- [ ] Person 2: implement the core puzzle mechanic fully in JavaScript
+**Day 3 — Puzzle logic (Lazaro + Person 3)**
+- [ ] Lazaro: implement the core puzzle mechanic fully in JavaScript
 - [ ] Person 3: encode or hash the flag so it is not readable in plain source (e.g. SHA-256 comparison, XOR, reversed split string)
 - [ ] Person 3: write the submission handler — correct flag shows success message, wrong flag shows generic error
 - [ ] Document the encoding method in `docs/flag_spec.md`
 
-**Day 4 — Integration (Person 1 + Person 2)**
-- [ ] Person 1: integrate Person 2's puzzle logic into the main HTML file
+**Day 4 — Integration (Person 1 + Lazaro)**
+- [ ] Person 1: integrate Lazaro's puzzle logic into the main HTML file
 - [ ] Person 1: integrate Person 3's flag validation into the submission handler
 - [ ] Verify the full flow works end-to-end: puzzle → player solves → enters flag → success/fail message
 
@@ -119,7 +119,7 @@ ctf-project/
   - [ ] Any confusing wording, broken UI, or JS errors?
 - [ ] Add all issues to `testing/bug_tracker.md`
 
-**Day 12 — Bug fixes (Person 1 + Person 2)**
+**Day 12 — Bug fixes (Person 1 + Lazaro)**
 - [ ] Work through every item in `testing/bug_tracker.md`
 - [ ] Fix all blocking bugs; flag anything cosmetic as low priority
 - [ ] Run a second quick test after fixes
